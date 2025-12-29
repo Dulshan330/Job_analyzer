@@ -35,21 +35,27 @@ def extract_text_from_docx(file):
 
 # --- Backend Logic ---
 def get_ollama_analysis(resume_text: str, jd_text: str) -> dict:
+    """
+    Sends the resume and JD to the local Ollama instance for analysis.
+    Returns a dictionary matching the AnalysisResult schema.
+    """
+
     # specialized system prompt for the role
     system_prompt = """
-    You are an expert AI Career Coach and ATS (Applicant Tracking System) specialist. 
-    Your goal is to objectively compare a candidate's resume against a job description.
-    
-    Analyze the input rigorously. 
-    1. Identify keywords and technical skills in the Job Description.
-    2. Check for their presence in the Resume (accounting for synonyms).
-    3. Determine a matching score (0-100%).
-    4. Provide specific, actionable advice.
-    
-    You must output ONLY valid JSON. Do not include markdown formatting or preamble.
+    You are a strict, evidence-based AI Career Coach and ATS (Applicant Tracking System) specialist. 
+    Your goal is to compare a candidate's resume against a job description (JD) based ONLY on the provided text.
+
+    CRITICAL RULES:
+    1. **NO HALLUCINATIONS:** Do not assume the candidate has a skill unless it is explicitly stated in the Resume text. Even if a candidate is a "Senior Developer," do not assume they know "Docker" unless the word "Docker" appears in the resume.
+    2. **Existing Skills:** This list must ONLY contain technical skills and keywords that appear in BOTH the JD and the Resume.
+    3. **Missing Skills:** This list must contain critical skills found in the JD that are completely ABSENT from the Resume.
+    4. **Synonyms:** You may recognize standard synonyms (e.g., "React" = "React.js", "AWS" = "Amazon Web Services"), but if the concept is missing, mark it as missing.
+    5. **Output Format:** You must output ONLY valid JSON.
     """
 
     user_prompt = f"""
+    Please perform a deep gap analysis on the following data:
+    
     **Job Description:**
     {jd_text}
 
@@ -62,7 +68,7 @@ def get_ollama_analysis(resume_text: str, jd_text: str) -> dict:
         "existing_skills": [<list of strings>],
         "missing_skills": [<list of strings>],
         "recommended_improvements": [<list of strings>],
-        "suitability_status": "<string>"
+        "suitability_status": "<One of: Highly Recommended, Qualified, Potential Match, Not Qualified>"
     }}
     """
 
